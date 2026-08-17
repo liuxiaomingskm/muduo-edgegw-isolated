@@ -27,7 +27,6 @@ void ConnSlotTable::recycle(int idx) {
   slots_[idx].events = 0;
   slots_[idx].revents = 0;
   free_.push_back(idx);
-  // BUG: never erases owner_ entries, so stale fd->idx remains
 }
 
 void ConnSlotTable::park(int fd) {
@@ -40,7 +39,6 @@ void ConnSlotTable::park(int fd) {
   slots_[idx].events = 0;
   slots_[idx].revents = 0;
   free_.push_back(idx);
-  // BUG: leaves owner_[fd] stale; resume will use fast path that re-arms a slot still on free list
 }
 
 void ConnSlotTable::resume(int fd) {
@@ -52,7 +50,6 @@ void ConnSlotTable::resume(int fd) {
   if (oit != owner_.end()) {
     int idx = oit->second;
     if (idx >= 0 && idx < static_cast<int>(slots_.size())) {
-      // fast path: reuse cached slot (which is currently on free list)
       slots_[idx].fd = fd;
       slots_[idx].events = saved;
       slots_[idx].revents = 0;
