@@ -1,0 +1,2 @@
+add_executable(stall_repro stall_repro.cc)
+target_link_libraries(stall_repro edgegw_lib muduo_net)
