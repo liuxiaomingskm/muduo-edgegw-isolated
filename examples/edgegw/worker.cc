@@ -10,13 +10,8 @@ Worker::~Worker() { stop(); delete thread_; }
 void Worker::start() {
   thread_ = new muduo::net::EventLoopThread();
   loop_ = thread_->startLoop();
-  // capture tid from loop thread
   muduo::MutexLockGuard lock(mutex_);
-  // loop thread id is not directly available, we use loop's check via isInLoopThread
-  // For tracking, we store current thread id after start via queue
-  // We'll set threadId_ via runInLoop
   loop_->runInLoop([this]() { threadId_ = muduo::CurrentThread::tid(); });
-  // wait a bit for threadId to be set
   for (int i = 0; i < 100 && threadId_ == 0; ++i) {
     usleep(1000);
   }
@@ -39,7 +34,7 @@ void Worker::checkThread(const char* op) {
 void Worker::addConnection(int connId) {
   checkThread("addConnection");
   muduo::MutexLockGuard lock(mutex_);
-  connections_[connId] = false; // initially disabled until enabled
+  connections_[connId] = false;
   mutationCount++;
 }
 
@@ -73,7 +68,6 @@ void Worker::disableReading(int connId) {
 }
 
 void Worker::unsafeAdd(int connId) {
-  // Intentionally not checking thread - buggy path, but we still mark wrongThread
   if (loop_ && !loop_->isInLoopThread()) {
     wrongThreadMutation = true;
   }

@@ -22,13 +22,11 @@ class Worker {
   int id() const { return id_; }
   pid_t threadId() const { return threadId_; }
 
-  // Correct API: must be called from loop thread, otherwise marks wrongThreadMutation
   void addConnection(int connId);
   void removeConnection(int connId);
   void enableReading(int connId);
   void disableReading(int connId);
 
-  // Unsafe direct mutation (used by buggy migrator) - no thread check, but sets flag
   void unsafeAdd(int connId);
   void unsafeRemove(int connId);
   void unsafeSetReading(int connId, bool enabled);
@@ -38,7 +36,6 @@ class Worker {
   size_t connectionCount() const;
   std::unordered_set<int> getConnections() const;
 
-  // For connection state transfer
   int getBufferedBytes(int connId) const;
   void setBufferedBytes(int connId, int bytes);
   bool hasTimer(int connId) const;
@@ -57,7 +54,7 @@ class Worker {
   pid_t threadId_{0};
 
   mutable muduo::MutexLock mutex_;
-  std::unordered_map<int, bool> connections_ GUARDED_BY(mutex_); // connId -> readingEnabled
+  std::unordered_map<int, bool> connections_ GUARDED_BY(mutex_);
   std::unordered_map<int, int> buffered_ GUARDED_BY(mutex_);
   std::unordered_set<int> timers_ GUARDED_BY(mutex_);
 };
