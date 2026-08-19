@@ -39,4 +39,6 @@ bool Migrator::migrateWithLatches(int connId, Worker* src, Worker* dst, Ledger* 
   return true;
 }
 
+void Migrator::clearGlobalState() {}
+
 } // namespace edgegw
