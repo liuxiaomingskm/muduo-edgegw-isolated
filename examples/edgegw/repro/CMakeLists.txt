@@ -1,0 +1,2 @@
+add_executable(rebalance_repro rebalance_repro.cc)
+target_link_libraries(rebalance_repro edgegw_lib muduo_net)
