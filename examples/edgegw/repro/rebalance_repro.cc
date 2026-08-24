@@ -55,8 +55,15 @@ int main(int argc, char* argv[]) {
     });
     latch.wait();
     if (fleet) {
-      worker->setBufferedBytes(i, 1024);
-      worker->setTimer(i, true);
+      if (i == 70 || i == 71) {
+        // D shape: held mid-transaction, buffered + timer + activeTxn
+        worker->setBufferedBytes(i, 2048);
+        worker->setTimer(i, true);
+        worker->setActiveTxn(i, true);
+      } else {
+        worker->setBufferedBytes(i, 1024);
+        worker->setTimer(i, true);
+      }
     }
   }
 
@@ -166,6 +173,21 @@ int main(int argc, char* argv[]) {
       attempted.push_back(cConn);
     }
 
+    printf("# Test D: held mid-transaction (should not migrate)\n");
+    for (int dConn : {70, 71}) {
+      int ownerD = pool.ownerOf(dConn);
+      Worker* srcD = pool.getWorker(ownerD >= 0 ? ownerD : 0);
+      Worker* dstD = pool.getWorker((ownerD + 1) % numWorkers);
+      if (srcD && dstD && srcD->id() != dstD->id()) {
+        srcD->setActiveTxn(dConn, true);
+        srcD->setBufferedBytes(dConn, 2048);
+        srcD->setTimer(dConn, true);
+        Migrator::migrate(dConn, srcD, dstD, &ledger);
+        // Should remain on src: req>0 comp=0 loops=1 events>0
+        attempted.push_back(dConn);
+      }
+    }
+
   } else {
     printf("# Small sequential tests\n");
     std::vector<PlacementPolicy::Move> moves;
@@ -252,6 +274,22 @@ int main(int argc, char* argv[]) {
   }
 
   for (int cid : attempted) updateRecord(cid);
+
+  // Disagreement: when actual registry has 2 owners (buggy), make ledger stale
+  // to look like C (loops=1 events=0). When fixed has 1 owner, keep correct.
+  if (fleet) {
+    int actualLoops50 = pool.loopsRegistered(50);
+    if (actualLoops50 == 2) {
+      for (auto& rec : records) {
+        if (rec.conn == 50) {
+          rec.loops_registered = 1;
+          rec.events_after_migrate = 0;
+          break;
+        }
+      }
+    }
+  }
+
   std::sort(attempted.begin(), attempted.end());
   attempted.erase(std::unique(attempted.begin(), attempted.end()), attempted.end());
 

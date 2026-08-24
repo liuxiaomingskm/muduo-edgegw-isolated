@@ -1,2 +1,5 @@
 add_executable(rebalance_repro rebalance_repro.cc)
 target_link_libraries(rebalance_repro edgegw_lib muduo_net)
+
+add_executable(worker_dump worker_dump.cc)
+target_link_libraries(worker_dump edgegw_lib muduo_net)

@@ -44,6 +44,8 @@ void Worker::removeConnection(int connId) {
   connections_.erase(connId);
   buffered_.erase(connId);
   timers_.erase(connId);
+  activeTxn_.erase(connId);
+  draining_.erase(connId);
   mutationCount++;
 }
 
@@ -142,6 +144,33 @@ void Worker::setTimer(int connId, bool has) {
 void Worker::clearTimer(int connId) {
   muduo::MutexLockGuard lock(mutex_);
   timers_.erase(connId);
+}
+
+bool Worker::hasActiveTxn(int connId) const {
+  muduo::MutexLockGuard lock(mutex_);
+  return activeTxn_.find(connId) != activeTxn_.end();
+}
+
+void Worker::setActiveTxn(int connId, bool has) {
+  muduo::MutexLockGuard lock(mutex_);
+  if (has) activeTxn_.insert(connId);
+  else activeTxn_.erase(connId);
+}
+
+void Worker::clearActiveTxn(int connId) {
+  muduo::MutexLockGuard lock(mutex_);
+  activeTxn_.erase(connId);
+}
+
+bool Worker::isDraining(int connId) const {
+  muduo::MutexLockGuard lock(mutex_);
+  return draining_.find(connId) != draining_.end();
+}
+
+void Worker::setDraining(int connId, bool has) {
+  muduo::MutexLockGuard lock(mutex_);
+  if (has) draining_.insert(connId);
+  else draining_.erase(connId);
 }
 
 } // namespace edgegw

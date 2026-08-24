@@ -8,6 +8,11 @@ bool Migrator::migrate(int connId, Worker* src, Worker* dst, Ledger* ledger) {
   if (!src || !dst) return false;
   if (src->id() == dst->id()) return false;
 
+  if (src->hasActiveTxn(connId)) {
+    if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
+    return false;
+  }
+
   if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
 
   dst->unsafeAdd(connId);
@@ -25,6 +30,12 @@ bool Migrator::migrate(int connId, Worker* src, Worker* dst, Ledger* ledger) {
 bool Migrator::migrateWithLatches(int connId, Worker* src, Worker* dst, Ledger* ledger,
                                   muduo::CountDownLatch* afterAdd, muduo::CountDownLatch* proceed) {
   if (!src || !dst) return false;
+  if (src && src->hasActiveTxn(connId)) {
+    if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
+    if (afterAdd) afterAdd->countDown();
+    if (proceed) proceed->wait();
+    return false;
+  }
   if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
 
   dst->unsafeAdd(connId);

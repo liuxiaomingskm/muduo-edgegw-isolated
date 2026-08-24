@@ -42,6 +42,13 @@ class Worker {
   void setTimer(int connId, bool has);
   void clearTimer(int connId);
 
+  bool hasActiveTxn(int connId) const;
+  void setActiveTxn(int connId, bool has);
+  void clearActiveTxn(int connId);
+
+  bool isDraining(int connId) const;
+  void setDraining(int connId, bool has);
+
   std::atomic<bool> wrongThreadMutation{false};
   std::atomic<int> mutationCount{0};
 
@@ -57,6 +64,8 @@ class Worker {
   std::unordered_map<int, bool> connections_ GUARDED_BY(mutex_);
   std::unordered_map<int, int> buffered_ GUARDED_BY(mutex_);
   std::unordered_set<int> timers_ GUARDED_BY(mutex_);
+  std::unordered_set<int> activeTxn_ GUARDED_BY(mutex_);
+  std::unordered_set<int> draining_ GUARDED_BY(mutex_);
 };
 
 } // namespace edgegw
