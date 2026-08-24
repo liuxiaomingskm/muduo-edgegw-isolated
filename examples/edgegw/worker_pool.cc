@@ -61,4 +61,9 @@ bool WorkerPool::checkExactlyOneOwner(int connId) const {
   return loopsRegistered(connId) == 1;
 }
 
+int WorkerPool::quiesceHeldConnections() {
+  // No-op in buggy base: does not drain activeTxn connections
+  return 0;
+}
+
 } // namespace edgegw

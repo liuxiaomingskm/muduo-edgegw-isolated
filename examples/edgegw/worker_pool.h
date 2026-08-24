@@ -25,6 +25,9 @@ class WorkerPool {
   // For testing: check invariants
   bool checkExactlyOneOwner(int connId) const;
 
+  int quiesceHeldConnections();
+  int drainCount() const { return 0; }
+
  private:
   int numWorkers_;
   std::vector<std::unique_ptr<Worker>> workers_;
