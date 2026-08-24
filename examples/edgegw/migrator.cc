@@ -10,9 +10,9 @@ bool Migrator::migrate(int connId, Worker* src, Worker* dst, Ledger* ledger) {
 
   if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
 
-  dst->unsafeAdd(connId);
+  dst->registerConn(connId);
   usleep(1000);
-  src->unsafeRemove(connId);
+  src->unregisterConn(connId);
 
   if (ledger) {
     auto* e = ledger->getOrCreate(connId);
@@ -27,10 +27,10 @@ bool Migrator::migrateWithLatches(int connId, Worker* src, Worker* dst, Ledger* 
   if (!src || !dst) return false;
   if (ledger) ledger->getOrCreate(connId)->migrate_requested++;
 
-  dst->unsafeAdd(connId);
+  dst->registerConn(connId);
   if (afterAdd) afterAdd->countDown();
   if (proceed) proceed->wait();
-  src->unsafeRemove(connId);
+  src->unregisterConn(connId);
 
   if (ledger) {
     ledger->getOrCreate(connId)->migrate_completed++;

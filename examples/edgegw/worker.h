@@ -27,9 +27,9 @@ class Worker {
   void enableReading(int connId);
   void disableReading(int connId);
 
-  void unsafeAdd(int connId);
-  void unsafeRemove(int connId);
-  void unsafeSetReading(int connId, bool enabled);
+  void registerConn(int connId);
+  void unregisterConn(int connId);
+  void applyReadInterest(int connId, bool enabled);
 
   bool hasConnection(int connId) const;
   bool isReadingEnabled(int connId) const;

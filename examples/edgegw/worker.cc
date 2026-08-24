@@ -67,7 +67,7 @@ void Worker::disableReading(int connId) {
   mutationCount++;
 }
 
-void Worker::unsafeAdd(int connId) {
+void Worker::registerConn(int connId) {
   if (loop_ && !loop_->isInLoopThread()) {
     wrongThreadMutation = true;
   }
@@ -76,7 +76,7 @@ void Worker::unsafeAdd(int connId) {
   mutationCount++;
 }
 
-void Worker::unsafeRemove(int connId) {
+void Worker::unregisterConn(int connId) {
   if (loop_ && !loop_->isInLoopThread()) {
     wrongThreadMutation = true;
   }
@@ -85,7 +85,7 @@ void Worker::unsafeRemove(int connId) {
   mutationCount++;
 }
 
-void Worker::unsafeSetReading(int connId, bool enabled) {
+void Worker::applyReadInterest(int connId, bool enabled) {
   if (loop_ && !loop_->isInLoopThread()) {
     wrongThreadMutation = true;
   }

@@ -13,7 +13,7 @@ bool ConnectionState::transferWithBufferedCheck(int connId, Worker* src, Worker*
     dst->setBufferedBytes(connId, 0);
     return false;
   } else {
-    dst->unsafeSetReading(connId, true);
+    dst->applyReadInterest(connId, true);
     dst->setTimer(connId, true);
     src->clearTimer(connId);
     dst->setBufferedBytes(connId, 0);
