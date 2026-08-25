@@ -217,6 +217,29 @@ int main(int argc, char* argv[]) {
       }
     }
 
+    // P0-1 parity: bare migrate must leave reading enabled (oracle path)
+    printf("# Test Bare: single migrate must leave reading enabled (P0-1 parity)\n");
+    {
+      int bareConn = 42;
+      Worker* srcBare = pool.getWorker(0);
+      Worker* dstBare = pool.getWorker(1);
+      if (srcBare && dstBare && srcBare->id() != dstBare->id()) {
+        CountDownLatch addLatch(1);
+        srcBare->loop()->queueInLoop([srcBare, bareConn, &addLatch]() {
+          if (!srcBare->hasConnection(bareConn)) {
+            srcBare->addConnection(bareConn);
+            srcBare->enableReading(bareConn);
+          }
+          addLatch.countDown();
+        });
+        addLatch.wait();
+        srcBare->setBufferedBytes(bareConn, 0);
+        srcBare->setTimer(bareConn, true);
+        Migrator::migrate(bareConn, srcBare, dstBare, &ledger);
+        attempted.push_back(bareConn);
+      }
+    }
+
   } else {
     printf("# Small sequential tests\n");
     std::vector<PlacementPolicy::Move> moves;

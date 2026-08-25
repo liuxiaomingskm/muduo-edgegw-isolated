@@ -168,6 +168,26 @@ int main(int argc, char* argv[]) {
         ledger.getOrCreate(eConn)->migrate_requested++;
       }
     }
+
+    {
+      int bareConn = 42;
+      Worker* srcBare = pool.getWorker(0);
+      Worker* dstBare = pool.getWorker(1);
+      if (srcBare && dstBare && srcBare->id() != dstBare->id()) {
+        CountDownLatch addLatch(1);
+        srcBare->loop()->queueInLoop([srcBare, bareConn, &addLatch]() {
+          if (!srcBare->hasConnection(bareConn)) {
+            srcBare->addConnection(bareConn);
+            srcBare->enableReading(bareConn);
+          }
+          addLatch.countDown();
+        });
+        addLatch.wait();
+        srcBare->setBufferedBytes(bareConn, 0);
+        srcBare->setTimer(bareConn, true);
+        Migrator::migrate(bareConn, srcBare, dstBare, &ledger);
+      }
+    }
   }
 
   for (auto w : pool.allWorkers()) {
