@@ -47,10 +47,17 @@ int main(int argc, char* argv[]) {
     });
     latch.wait();
     if (fleet) {
-      if (i == 70 || i == 71) {
+      if (i == 70) {
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
+      } else if (i == 71) {
+        worker->setBufferedBytes(i, 1024);
+        worker->setTimer(i, true);
+        worker->setActiveTxn(i, true);
+      } else if (i == 72) {
+        worker->setBufferedBytes(i, 1024);
+        worker->setTimer(i, true);
       } else {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
@@ -125,14 +132,17 @@ int main(int argc, char* argv[]) {
       t1.join();
     }
 
-    int cConn = 60;
-    int ownerC = pool.ownerOf(cConn);
-    Worker* srcC = pool.getWorker(ownerC >= 0 ? ownerC : 0);
-    Worker* dstC = pool.getWorker(3);
-    if (srcC && dstC && srcC->id() != dstC->id()) {
-      srcC->setBufferedBytes(cConn, 2048);
-      Migrator::migrate(cConn, srcC, dstC, &ledger);
-      ConnectionState::transferWithBufferedCheck(cConn, srcC, dstC, 2048);
+    for (int cConn : {51, 60}) {
+      int ownerC = pool.ownerOf(cConn);
+      Worker* srcC = pool.getWorker(ownerC >= 0 ? ownerC : 0);
+      int dstId = (srcC->id() + 3) % numWorkers;
+      if (dstId == srcC->id()) dstId = (dstId + 1) % numWorkers;
+      Worker* dstC = pool.getWorker(dstId);
+      if (srcC && dstC && srcC->id() != dstC->id()) {
+        srcC->setBufferedBytes(cConn, 2048);
+        Migrator::migrate(cConn, srcC, dstC, &ledger);
+        ConnectionState::transferWithBufferedCheck(cConn, srcC, dstC, 2048);
+      }
     }
 
     for (int dConn : {70, 71}) {
@@ -141,9 +151,21 @@ int main(int argc, char* argv[]) {
       Worker* dstD = pool.getWorker((ownerD + 1) % numWorkers);
       if (srcD && dstD && srcD->id() != dstD->id()) {
         srcD->setActiveTxn(dConn, true);
-        srcD->setBufferedBytes(dConn, 2048);
+        int buf = (dConn == 70) ? 2048 : 1024;
+        srcD->setBufferedBytes(dConn, buf);
         srcD->setTimer(dConn, true);
         Migrator::migrate(dConn, srcD, dstD, &ledger);
+      }
+    }
+
+    {
+      int eConn = 72;
+      int ownerE = pool.ownerOf(eConn);
+      Worker* srcE = pool.getWorker(ownerE >= 0 ? ownerE : 0);
+      if (srcE) {
+        srcE->setBufferedBytes(eConn, 1024);
+        srcE->setTimer(eConn, true);
+        ledger.getOrCreate(eConn)->migrate_requested++;
       }
     }
   }
