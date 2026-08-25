@@ -62,7 +62,7 @@ bool WorkerPool::checkExactlyOneOwner(int connId) const {
 }
 
 int WorkerPool::quiesceHeldConnections() {
-  // No-op in buggy base: does not drain activeTxn connections
+  // See header for contract – actual draining is in the fixed version.
   return 0;
 }
 
