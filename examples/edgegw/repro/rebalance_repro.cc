@@ -130,6 +130,9 @@ int main(int argc, char* argv[]) {
     placement.parkConnectionsForMove(pool, movesA2);
     placement.scheduleMoves(movesA2);
     auto pendingA2 = placement.getPendingMoves();
+    size_t pendingAfterSecondSchedule = pendingA2.size();
+    printf("pending_after_schedule=%zu (expected 11 if scheduleMoves merges, 7 if clears)\n", pendingAfterSecondSchedule);
+    ledger.getOrCreate(1000)->migrate_requested = static_cast<int>(pendingAfterSecondSchedule);
     for (size_t i = static_cast<size_t>(half); i < pendingA1.size(); ++i) {
       int lost = pendingA1[i].connId;
       if (std::find(attempted.begin(), attempted.end(), lost) == attempted.end())
@@ -359,14 +362,22 @@ int main(int argc, char* argv[]) {
   printf("\n# Ledger output:\n");
   for (auto& rec : records) {
     if (std::find(attempted.begin(), attempted.end(), rec.conn) == attempted.end()) continue;
-    printf("conn=%d migrate_requested=%d migrate_completed=%d loops_registered=%d events_after_migrate=%d\n",
-           rec.conn, rec.migrate_requested, rec.migrate_completed, rec.loops_registered, rec.events_after_migrate);
+    printf("conn=%d migrate_requested=%d migrate_completed=%d loops_registered=%d events_after_migrate=%d pending=%d\n",
+           rec.conn, rec.migrate_requested, rec.migrate_completed, rec.loops_registered, rec.events_after_migrate,
+           ledger.getOrCreate(1000)->migrate_requested.load());
   }
+  printf("pending_after_schedule=%d\n", ledger.getOrCreate(1000)->migrate_requested.load());
+  printf("pending_final=%zu\n", placement.pendingSize());
 
   int stalled = 0;
   for (auto& rec : records) {
     if (std::find(attempted.begin(), attempted.end(), rec.conn) == attempted.end()) continue;
     if (rec.loops_registered != 1 || rec.events_after_migrate == 0) stalled++;
+  }
+  int pendingAfterSecond = ledger.getOrCreate(1000)->migrate_requested.load();
+  if (pendingAfterSecond != 11) {
+    printf("RESULT: pending backlog unexpected %d (expected 11) – scheduleMoves must merge, not replace/clear\n", pendingAfterSecond);
+    stalled++;
   }
   if (stalled == 0) printf("RESULT: all %zu migrated connections healthy\n", attempted.size());
   else printf("RESULT: %d/%zu migrated connections stalled\n", stalled, attempted.size());
