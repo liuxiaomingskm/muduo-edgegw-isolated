@@ -379,6 +379,20 @@ int main(int argc, char* argv[]) {
     printf("RESULT: pending backlog unexpected %d (expected 11) – scheduleMoves must merge, not replace/clear\n", pendingAfterSecond);
     stalled++;
   }
+  // P0-3 D forced via migrator must be red – held with activeTxn=1 should have comp==0
+  for (int dConn : {70, 71, 133}) {
+    auto* e = ledger.getOrCreate(dConn);
+    int owner = pool.ownerOf(dConn);
+    Worker* w = (owner>=0)? pool.getWorker(owner):nullptr;
+    if (w && w->hasActiveTxn(dConn) && e->migrate_completed.load() > 0) {
+      printf("RESULT: D forced via migrator conn=%d owner=%d comp=%d still activeTxn=1 should have stayed comp=0\n", dConn, owner, e->migrate_completed.load());
+      stalled++;
+    }
+  }
+  if (pool.loopsRegistered(72) == 0) {
+    printf("RESULT: E quiesced conn=72 activeTxn=0 should have been migrated not quiesced\n");
+    stalled++;
+  }
   if (stalled == 0) printf("RESULT: all %zu migrated connections healthy\n", attempted.size());
   else printf("RESULT: %d/%zu migrated connections stalled\n", stalled, attempted.size());
 
