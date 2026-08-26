@@ -22,6 +22,12 @@ class Worker {
   int id() const { return id_; }
   pid_t threadId() const { return threadId_; }
 
+  /**
+   * These four methods mutate the registration table that belongs to this
+   * worker's own EventLoop. The mutation must occur on the loop that owns
+   * the table. A caller running on a different thread is expected to use
+   * loop()->queueInLoop(...) to run the operation on the owning loop.
+   */
   void addConnection(int connId);
   void removeConnection(int connId);
   void enableReading(int connId);
@@ -49,6 +55,10 @@ class Worker {
   bool isDraining(int connId) const;
   void setDraining(int connId, bool has);
 
+  /**
+   * Flag raised when a registration-table mutation occurs outside the
+   * owning loop thread. Used for detecting thread-affinity violations.
+   */
   std::atomic<bool> wrongThreadMutation{false};
   std::atomic<int> mutationCount{0};
 
