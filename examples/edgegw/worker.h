@@ -55,6 +55,11 @@ class Worker {
   bool isDraining(int connId) const;
   void setDraining(int connId, bool has);
 
+  int getTxnGen(int connId) const;
+  void setTxnGen(int connId, int gen);
+  int getLastWriteAgeMs(int connId) const;
+  void setLastWriteAgeMs(int connId, int ageMs);
+
   /**
    * Flag raised when a registration-table mutation occurs outside the
    * owning loop thread. Used for detecting thread-affinity violations.
@@ -76,6 +81,8 @@ class Worker {
   std::unordered_set<int> timers_ GUARDED_BY(mutex_);
   std::unordered_set<int> activeTxn_ GUARDED_BY(mutex_);
   std::unordered_set<int> draining_ GUARDED_BY(mutex_);
+  std::unordered_map<int, int> txnGen_ GUARDED_BY(mutex_);
+  std::unordered_map<int, int> lastWriteAgeMs_ GUARDED_BY(mutex_);
 };
 
 } // namespace edgegw

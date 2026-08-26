@@ -46,6 +46,8 @@ void Worker::removeConnection(int connId) {
   timers_.erase(connId);
   activeTxn_.erase(connId);
   draining_.erase(connId);
+  txnGen_.erase(connId);
+  lastWriteAgeMs_.erase(connId);
   mutationCount++;
 }
 
@@ -165,6 +167,29 @@ void Worker::clearActiveTxn(int connId) {
 bool Worker::isDraining(int connId) const {
   muduo::MutexLockGuard lock(mutex_);
   return draining_.find(connId) != draining_.end();
+}
+
+int Worker::getTxnGen(int connId) const {
+  muduo::MutexLockGuard lock(mutex_);
+  auto it = txnGen_.find(connId);
+  return it != txnGen_.end() ? it->second : 0;
+}
+
+void Worker::setTxnGen(int connId, int gen) {
+  muduo::MutexLockGuard lock(mutex_);
+  if (gen) txnGen_[connId] = gen;
+  else txnGen_.erase(connId);
+}
+
+int Worker::getLastWriteAgeMs(int connId) const {
+  muduo::MutexLockGuard lock(mutex_);
+  auto it = lastWriteAgeMs_.find(connId);
+  return it != lastWriteAgeMs_.end() ? it->second : 0;
+}
+
+void Worker::setLastWriteAgeMs(int connId, int ageMs) {
+  muduo::MutexLockGuard lock(mutex_);
+  lastWriteAgeMs_[connId] = ageMs;
 }
 
 void Worker::setDraining(int connId, bool has) {

@@ -46,6 +46,13 @@ class WorkerPool {
    */
   int drainCount() const { return drainCount_; }
 
+  /**
+   * Returns true if connection has buffered data and an active timer
+   * after a rebalance. Such connections are generally considered stalled
+   * and require recovery handling.
+   */
+  bool hasBufferedAndTimer(int connId) const;
+
  private:
   int numWorkers_;
   std::vector<std::unique_ptr<Worker>> workers_;

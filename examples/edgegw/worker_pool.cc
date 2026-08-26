@@ -57,6 +57,15 @@ size_t WorkerPool::totalConnections() const {
   return total;
 }
 
+bool WorkerPool::hasBufferedAndTimer(int connId) const {
+  for (auto& w : workers_) {
+    if (w->hasConnection(connId)) {
+      return w->hasTimer(connId) && w->getBufferedBytes(connId) > 0;
+    }
+  }
+  return false;
+}
+
 bool WorkerPool::checkExactlyOneOwner(int connId) const {
   return loopsRegistered(connId) == 1;
 }

@@ -51,16 +51,24 @@ int main(int argc, char* argv[]) {
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
+        worker->setTxnGen(i, 1);
+        worker->setLastWriteAgeMs(i, 120);
       } else if (i == 71) {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
+        worker->setTxnGen(i, 1);
+        worker->setLastWriteAgeMs(i, 130);
       } else if (i == 72) {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 150);
       } else {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 800);
       }
     }
   }
@@ -130,6 +138,7 @@ int main(int argc, char* argv[]) {
       t2.join();
       proceed.countDown();
       t1.join();
+      if (dstB1) { dstB1->setTxnGen(bConn, 1); dstB1->setLastWriteAgeMs(bConn, 200); }
     }
 
     for (int cConn : {51, 60}) {
@@ -203,10 +212,11 @@ int main(int argc, char* argv[]) {
       int reading = w->isReadingEnabled(cid) ? 1 : 0;
       int buffered = w->getBufferedBytes(cid);
       int timer = w->hasTimer(cid) ? 1 : 0;
-      int activeTxn = w->hasActiveTxn(cid) ? 1 : 0;
+      int txnGen = w->getTxnGen(cid);
+      int writeAge = w->getLastWriteAgeMs(cid);
       int draining = w->isDraining(cid) ? 1 : 0;
-      printf("worker=%d conn=%d reading=%d buffered=%d timer=%d activeTxn=%d draining=%d\n",
-             w->id(), cid, reading, buffered, timer, activeTxn, draining);
+      printf("worker=%d conn=%d reading=%d buffered=%d timer=%d txnGen=%d writeAge=%d draining=%d\n",
+             w->id(), cid, reading, buffered, timer, txnGen, writeAge, draining);
     }
   }
 

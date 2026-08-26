@@ -56,23 +56,27 @@ int main(int argc, char* argv[]) {
     latch.wait();
     if (fleet) {
       if (i == 70) {
-        // D shape: held mid-transaction, 2048
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
+        worker->setTxnGen(i, 1);
+        worker->setLastWriteAgeMs(i, 120);
       } else if (i == 71) {
-        // D masquerade (suggestion 1): same ledger shape as C but activeTxn
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
+        worker->setTxnGen(i, 1);
+        worker->setLastWriteAgeMs(i, 130);
       } else if (i == 72) {
-        // E shape (suggestion 4): healthy slow, looks like D req>0 comp0 but activeTxn=0
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
-        // no activeTxn
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 150);
       } else {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 800);
       }
     }
   }
@@ -171,6 +175,7 @@ int main(int argc, char* argv[]) {
       t2.join();
       proceed.countDown();
       t1.join();
+      if (dstB1) { dstB1->setTxnGen(bConn, 1); dstB1->setLastWriteAgeMs(bConn, 200); }
       attempted.push_back(bConn);
     }
 
