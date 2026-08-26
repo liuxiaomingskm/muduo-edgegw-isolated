@@ -55,12 +55,8 @@ int main(int argc, char* argv[]) {
     });
     latch.wait();
     if (fleet) {
-      // Overlapping writeAge design: no single column decides letter
-      // A (0-6,10-16) timer0 reading will be disabled by park, buffered 1024, txnGen0, writeAge 800
-      // C (51,60) will end timer0 reading0 buffered2048 txnGen0 writeAge800 after failed transfer
-      // B (50) txnGen1 writeAge120 timer1 buffered1024
-      // D (70,71) txnGen1 writeAge120 timer1 buffered2048
-      // E (72) txnGen0 writeAge120 timer1 buffered1024
+      // Fleet setup with overlapping attributes to avoid single-column identification
+      // Connections have mixed buffered/timer/txnGen/writeAge to require combination
       if (i == 70 || i == 71) {
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
