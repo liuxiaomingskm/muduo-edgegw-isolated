@@ -66,6 +66,20 @@ bool WorkerPool::hasBufferedAndTimer(int connId) const {
   return false;
 }
 
+bool WorkerPool::isStalledForRecovery(int connId) const {
+  return hasBufferedAndTimer(connId);
+}
+
+int WorkerPool::countStalled() const {
+  int cnt = 0;
+  for (auto& w : workers_) {
+    for (int cid : w->getConnections()) {
+      if (w->hasTimer(cid) && w->getBufferedBytes(cid) > 0) cnt++;
+    }
+  }
+  return cnt;
+}
+
 bool WorkerPool::checkExactlyOneOwner(int connId) const {
   return loopsRegistered(connId) == 1;
 }

@@ -55,23 +55,40 @@ int main(int argc, char* argv[]) {
     });
     latch.wait();
     if (fleet) {
-      if (i == 70) {
+      // Overlapping writeAge design: no single column decides letter
+      // A (0-6,10-16) timer0 reading will be disabled by park, buffered 1024, txnGen0, writeAge 800
+      // C (51,60) will end timer0 reading0 buffered2048 txnGen0 writeAge800 after failed transfer
+      // B (50) txnGen1 writeAge120 timer1 buffered1024
+      // D (70,71) txnGen1 writeAge120 timer1 buffered2048
+      // E (72) txnGen0 writeAge120 timer1 buffered1024
+      if (i == 70 || i == 71) {
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
         worker->setActiveTxn(i, true);
         worker->setTxnGen(i, 1);
         worker->setLastWriteAgeMs(i, 120);
-      } else if (i == 71) {
-        worker->setBufferedBytes(i, 1024);
-        worker->setTimer(i, true);
-        worker->setActiveTxn(i, true);
-        worker->setTxnGen(i, 1);
-        worker->setLastWriteAgeMs(i, 130);
       } else if (i == 72) {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
         worker->setTxnGen(i, 0);
-        worker->setLastWriteAgeMs(i, 150);
+        worker->setLastWriteAgeMs(i, 120);
+      } else if (i == 50) {
+        worker->setBufferedBytes(i, 1024);
+        worker->setTimer(i, true);
+        worker->setTxnGen(i, 1);
+        worker->setLastWriteAgeMs(i, 120);
+      } else if ((i >= 0 && i < 7) || (i >= 10 && i < 17)) {
+        // A shape: will be parked, reading disabled, timer 0, buffered 1024
+        worker->setBufferedBytes(i, 1024);
+        worker->setTimer(i, false);
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 800);
+      } else if (i == 51 || i == 60) {
+        // C shape initial, will become timer0 after failed transfer
+        worker->setBufferedBytes(i, 2048);
+        worker->setTimer(i, true);
+        worker->setTxnGen(i, 0);
+        worker->setLastWriteAgeMs(i, 800);
       } else {
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, true);
@@ -175,7 +192,8 @@ int main(int argc, char* argv[]) {
       t2.join();
       proceed.countDown();
       t1.join();
-      if (dstB1) { dstB1->setTxnGen(bConn, 1); dstB1->setLastWriteAgeMs(bConn, 200); }
+      if (dstB1) { dstB1->setTxnGen(bConn, 1); dstB1->setLastWriteAgeMs(bConn, 120); }
+      if (dstB2) { dstB2->setTxnGen(bConn, 1); dstB2->setLastWriteAgeMs(bConn, 120); }
       attempted.push_back(bConn);
     }
 
