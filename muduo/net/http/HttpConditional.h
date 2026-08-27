@@ -15,8 +15,34 @@ struct Resource {
   long contentLength = 1024;
   bool exists = true;
   std::string assetClass = "static";
+  std::string profileVersion = "2024-09";
 };
 
+enum class ConditionalOutcome {
+  kNotFound,
+  kFullRepresentation,
+  kPreconditionFailed,
+  kNotModified,
+  kNotModifiedSuppressed,
+  kPartialContent,
+  kRangeNotSatisfiable,
+  kRangeIgnored,
+};
+
+enum class ConditionalRoute {
+  kProtocolDefault,
+  kAssetIntegrity,
+  kRepresentationReuse,
+};
+
+struct ConditionalDecision {
+  int status;
+  ConditionalOutcome outcome;
+  ConditionalRoute route;
+};
+
+ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
+                                                 const Resource& resource);
 int evaluateConditionalRequest(const HttpRequest& request, const Resource& resource);
 
 bool strongCompare(const std::string& etagList, const std::string& currentEtag);

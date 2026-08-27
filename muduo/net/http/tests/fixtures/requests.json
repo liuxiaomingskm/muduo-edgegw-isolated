@@ -182,7 +182,8 @@
       "If-Range": "\"xyz\"",
       "Range": "bytes=0-99"
     },
-    "asset_class": "video-chunk"
+    "asset_class": "video-chunk",
+    "profile_version": "2024-09"
   },
   {
     "id": "manifest-inm-no-match-ims-not-modified",
@@ -191,7 +192,8 @@
       "If-None-Match": "\"xyz\"",
       "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
     },
-    "asset_class": "manifest"
+    "asset_class": "manifest",
+    "profile_version": "2024-09"
   },
   {
     "id": "video-chunk-if-range-match",
@@ -200,7 +202,8 @@
       "If-Range": "\"abc123\"",
       "Range": "bytes=0-99"
     },
-    "asset_class": "video-chunk"
+    "asset_class": "video-chunk",
+    "profile_version": "2024-09"
   },
   {
     "id": "video-chunk-if-match-and-if-range-match",
@@ -210,7 +213,8 @@
       "If-Range": "\"abc123\"",
       "Range": "bytes=0-99"
     },
-    "asset_class": "video-chunk"
+    "asset_class": "video-chunk",
+    "profile_version": "2024-09"
   },
   {
     "id": "manifest-inm-match",
@@ -218,7 +222,8 @@
     "headers": {
       "If-None-Match": "\"abc123\""
     },
-    "asset_class": "manifest"
+    "asset_class": "manifest",
+    "profile_version": "2024-09"
   },
   {
     "id": "manifest-inm-no-match-ims-modified",
@@ -227,6 +232,68 @@
       "If-None-Match": "\"xyz\"",
       "If-Modified-Since": "Wed, 21 Oct 2015 07:27:00 GMT"
     },
-    "asset_class": "manifest"
+    "asset_class": "manifest",
+    "profile_version": "2024-09"
+  },
+  {
+    "id": "video-chunk-if-range-mismatch-new-profile",
+    "method": "GET",
+    "headers": {
+      "If-Range": "\"xyz\"",
+      "Range": "bytes=0-99"
+    },
+    "asset_class": "video-chunk",
+    "profile_version": "2025-01"
+  },
+  {
+    "id": "video-chunk-head-if-range-mismatch",
+    "method": "HEAD",
+    "headers": {
+      "If-Range": "\"xyz\"",
+      "Range": "bytes=0-99"
+    },
+    "asset_class": "video-chunk",
+    "profile_version": "2024-09"
+  },
+  {
+    "id": "video-chunk-precondition-before-range",
+    "method": "GET",
+    "headers": {
+      "If-Match": "\"xyz\"",
+      "If-Range": "\"stale\"",
+      "Range": "bytes=0-99"
+    },
+    "asset_class": "video-chunk",
+    "profile_version": "2024-09"
+  },
+  {
+    "id": "manifest-inm-match-with-ims",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"abc123\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    },
+    "asset_class": "manifest",
+    "profile_version": "2024-09"
+  },
+  {
+    "id": "manifest-suppressed-new-profile",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"xyz\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    },
+    "asset_class": "manifest",
+    "profile_version": "2025-01"
+  },
+  {
+    "id": "manifest-head-suppressed",
+    "method": "HEAD",
+    "headers": {
+      "If-None-Match": "\"xyz\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    },
+    "asset_class": "manifest",
+    "profile_version": "2024-09"
   }
 ]

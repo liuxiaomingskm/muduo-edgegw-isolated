@@ -117,9 +117,11 @@ bool isRangeSatisfiable(const std::string& rangeHeader, const Resource& resource
   }
 }
 
-int evaluateConditionalRequest(const HttpRequest& request, const Resource& resource) {
+ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
+                                                const Resource& resource) {
   if (!resource.exists) {
-    return 404;
+    return {404, ConditionalOutcome::kNotFound,
+            ConditionalRoute::kProtocolDefault};
   }
 
   std::string ifMatch = request.getHeader("If-Match");
@@ -138,26 +140,38 @@ int evaluateConditionalRequest(const HttpRequest& request, const Resource& resou
 
   if (hasIfMatch) {
     if (!strongCompare(ifMatch, resource.etag)) {
-      return 412;
+      return {412, ConditionalOutcome::kPreconditionFailed,
+              ConditionalRoute::kProtocolDefault};
     }
   } else if (hasIfUnmodifiedSince) {
     if (isDateModifiedAfter(ifUnmodifiedSince, resource.lastModified)) {
-      return 412;
+      return {412, ConditionalOutcome::kPreconditionFailed,
+              ConditionalRoute::kProtocolDefault};
     }
   }
 
   if (hasIfNoneMatch) {
     if (weakCompare(ifNoneMatch, resource.etag)) {
       if (request.method() == HttpRequest::kGet || request.method() == HttpRequest::kHead) {
-        return 304;
+        return {304, ConditionalOutcome::kNotModified,
+                ConditionalRoute::kProtocolDefault};
       } else {
-        return 412;
+        return {412, ConditionalOutcome::kPreconditionFailed,
+                ConditionalRoute::kProtocolDefault};
       }
+    }
+
+    if (hasIfModifiedSince &&
+        (request.method() == HttpRequest::kGet || request.method() == HttpRequest::kHead) &&
+        isDateNotModifiedSince(ifModifiedSince, resource.lastModified)) {
+      return {200, ConditionalOutcome::kNotModifiedSuppressed,
+              ConditionalRoute::kProtocolDefault};
     }
   } else if (hasIfModifiedSince) {
     if (request.method() == HttpRequest::kGet || request.method() == HttpRequest::kHead) {
       if (isDateNotModifiedSince(ifModifiedSince, resource.lastModified)) {
-        return 304;
+        return {304, ConditionalOutcome::kNotModified,
+                ConditionalRoute::kProtocolDefault};
       }
     }
   }
@@ -172,18 +186,32 @@ int evaluateConditionalRequest(const HttpRequest& request, const Resource& resou
         matches = isDateNotModifiedSince(v, resource.lastModified);
       }
       if (matches) {
-        if (isRangeSatisfiable(range, resource)) return 206;
-        else return 416;
+        if (isRangeSatisfiable(range, resource)) {
+          return {206, ConditionalOutcome::kPartialContent,
+                  ConditionalRoute::kProtocolDefault};
+        }
+        return {416, ConditionalOutcome::kRangeNotSatisfiable,
+                ConditionalRoute::kProtocolDefault};
       } else {
-        return 200;
+        return {200, ConditionalOutcome::kRangeIgnored,
+                ConditionalRoute::kProtocolDefault};
       }
     } else {
-      if (isRangeSatisfiable(range, resource)) return 206;
-      else return 416;
+      if (isRangeSatisfiable(range, resource)) {
+        return {206, ConditionalOutcome::kPartialContent,
+                ConditionalRoute::kProtocolDefault};
+      }
+      return {416, ConditionalOutcome::kRangeNotSatisfiable,
+              ConditionalRoute::kProtocolDefault};
     }
   }
 
-  return 200;
+  return {200, ConditionalOutcome::kFullRepresentation,
+          ConditionalRoute::kProtocolDefault};
+}
+
+int evaluateConditionalRequest(const HttpRequest& request, const Resource& resource) {
+  return evaluateConditionalDecision(request, resource).status;
 }
 
 } // namespace http

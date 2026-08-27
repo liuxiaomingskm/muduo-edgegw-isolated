@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   std::string profileContent=readFile(profilePaths);
   std::string profileVersion="unknown";
   if (!profileContent.empty()) {
-    auto vPos=profileContent.find("\"version\"");
+    auto vPos=profileContent.find("\"default_version\"");
     if (vPos!=std::string::npos) {
       auto colon=profileContent.find(':', vPos);
       auto q1=findUnescapedQuote(profileContent, colon+1);
@@ -105,6 +105,13 @@ int main(int argc, char* argv[]) {
         auto q1=findUnescapedQuote(obj, colon+1);
         auto q2=findUnescapedQuote(obj, q1+1);
         if (q1!=std::string::npos && q2!=std::string::npos) assetClass=obj.substr(q1+1, q2-q1-1);
+      }
+      auto pvPos=obj.find("\"profile_version\"");
+      if (pvPos!=std::string::npos) {
+        auto colon=obj.find(':', pvPos);
+        auto q1=findUnescapedQuote(obj, colon+1);
+        auto q2=findUnescapedQuote(obj, q1+1);
+        if (q1!=std::string::npos && q2!=std::string::npos) profileVersion=obj.substr(q1+1, q2-q1-1);
       }
       auto hPos=obj.find("\"headers\"");
       if (hPos!=std::string::npos) {
