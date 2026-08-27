@@ -31,4 +31,4 @@ endif()
 
 # Tool for evidence-only probe
 add_executable(condreq_probe tools/condreq_probe.cc)
-target_link_libraries(condreq_probe muduo_net)
+target_link_libraries(condreq_probe muduo_http)

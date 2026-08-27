@@ -41,6 +41,10 @@ struct ConditionalDecision {
   ConditionalRoute route;
 };
 
+const char* conditionalOutcomeName(ConditionalOutcome outcome);
+const char* conditionalRouteName(ConditionalRoute route);
+std::string conditionalProfileIdentity(const Resource& resource);
+
 ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
                                                  const Resource& resource);
 int evaluateConditionalRequest(const HttpRequest& request, const Resource& resource);

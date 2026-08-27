@@ -117,6 +117,44 @@ bool isRangeSatisfiable(const std::string& rangeHeader, const Resource& resource
   }
 }
 
+const char* conditionalOutcomeName(ConditionalOutcome outcome) {
+  switch (outcome) {
+    case ConditionalOutcome::kNotFound:
+      return "not-found";
+    case ConditionalOutcome::kFullRepresentation:
+      return "full-representation";
+    case ConditionalOutcome::kPreconditionFailed:
+      return "precondition-failed";
+    case ConditionalOutcome::kNotModified:
+      return "not-modified";
+    case ConditionalOutcome::kNotModifiedSuppressed:
+      return "not-modified-suppressed";
+    case ConditionalOutcome::kPartialContent:
+      return "partial-content";
+    case ConditionalOutcome::kRangeNotSatisfiable:
+      return "range-not-satisfiable";
+    case ConditionalOutcome::kRangeIgnored:
+      return "range-ignored";
+  }
+  return "unknown";
+}
+
+const char* conditionalRouteName(ConditionalRoute route) {
+  switch (route) {
+    case ConditionalRoute::kProtocolDefault:
+      return "protocol-default";
+    case ConditionalRoute::kAssetIntegrity:
+      return "asset-integrity";
+    case ConditionalRoute::kRepresentationReuse:
+      return "representation-reuse";
+  }
+  return "unknown";
+}
+
+std::string conditionalProfileIdentity(const Resource& resource) {
+  return resource.profileVersion + ":" + resource.assetClass;
+}
+
 ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
                                                 const Resource& resource) {
   if (!resource.exists) {

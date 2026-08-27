@@ -1,7 +1,7 @@
 {
   "default_version": "2024-09",
   "available_versions": ["2024-09", "2025-01"],
-  "description": "Local operating policy for conditional request routing – distinct from RFC 9110 which only classifies, profile decides final action per asset class. See skill for mapping table.",
+  "description": "Runtime identity for conditional-response handling. The profile is selected per asset; operational interpretation is documented separately.",
   "asset_classes": ["static", "video-chunk", "manifest", "immutable"],
   "default_asset_class": "static",
   "route_families": ["protocol-default", "asset-integrity", "representation-reuse"]

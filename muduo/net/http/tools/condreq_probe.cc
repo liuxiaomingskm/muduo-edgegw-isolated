@@ -1,3 +1,5 @@
+#include "muduo/net/http/HttpConditional.h"
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -148,6 +150,23 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  muduo::net::HttpRequest request;
+  request.setMethod(method.c_str(), method.c_str() + method.size());
+  for (const auto& header : headers) {
+    std::string line = header.first + ": " + header.second;
+    const char* start = line.c_str();
+    request.addHeader(start, start + header.first.size(), start + line.size());
+  }
+
+  muduo::net::http::Resource resource;
+  resource.etag = etag;
+  resource.lastModified = lastMod;
+  resource.contentLength = contentLength;
+  resource.assetClass = assetClass;
+  resource.profileVersion = profileVersion;
+  muduo::net::http::ConditionalDecision observed =
+      muduo::net::http::evaluateConditionalDecision(request, resource);
+
   if (jsonOutput) {
     std::cout<<"{\n";
     std::cout<<"  \"request_id\": \""<<jsonEscape(reqId)<<"\",\n";
@@ -168,10 +187,22 @@ int main(int argc, char* argv[]) {
     std::cout<<"    \"last_modified\": \""<<jsonEscape(lastMod)<<"\",\n";
     std::cout<<"    \"content_length\": "<<contentLength<<",\n";
     std::cout<<"    \"asset_class\": \""<<jsonEscape(assetClass)<<"\"\n";
+    std::cout<<"  },\n";
+    std::cout<<"  \"observed_decision\": {\n";
+    std::cout<<"    \"status\": "<<observed.status<<",\n";
+    std::cout<<"    \"rfc_outcome\": \""
+             <<muduo::net::http::conditionalOutcomeName(observed.outcome)<<"\",\n";
+    std::cout<<"    \"route\": \""
+             <<muduo::net::http::conditionalRouteName(observed.route)<<"\",\n";
+    std::cout<<"    \"profile_identity\": \""
+             <<jsonEscape(muduo::net::http::conditionalProfileIdentity(resource))<<"\"\n";
     std::cout<<"  }\n";
     std::cout<<"}\n";
   } else {
-    std::cout<<"Request "<<reqId<<" method="<<method<<" asset_class="<<assetClass<<" profile="<<profileVersion<<" has_range="<<hasRange<<" etag="<<etag<<"\n";
+    std::cout<<"Request "<<reqId<<" method="<<method<<" asset_class="<<assetClass<<" profile="<<profileVersion<<" has_range="<<hasRange<<" etag="<<etag
+             <<" observed_status="<<observed.status
+             <<" observed_outcome="<<muduo::net::http::conditionalOutcomeName(observed.outcome)
+             <<" observed_route="<<muduo::net::http::conditionalRouteName(observed.route)<<"\n";
     for (auto& kv: headers) std::cout<<"  "<<kv.first<<": "<<kv.second<<"\n";
   }
   return 0;
