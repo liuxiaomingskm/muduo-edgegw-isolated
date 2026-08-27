@@ -2,6 +2,7 @@ set(http_SRCS
   HttpServer.cc
   HttpResponse.cc
   HttpContext.cc
+  HttpConditional.cc
   )
 
 add_library(muduo_http ${http_SRCS})
@@ -13,6 +14,7 @@ set(HEADERS
   HttpRequest.h
   HttpResponse.h
   HttpServer.h
+  HttpConditional.h
   )
 install(FILES ${HEADERS} DESTINATION include/muduo/net/http)
 
@@ -27,4 +29,6 @@ endif()
 
 endif()
 
-# add_subdirectory(tests)
+# Tool for evidence-only probe
+add_executable(condreq_probe tools/condreq_probe.cc)
+target_link_libraries(condreq_probe muduo_net)

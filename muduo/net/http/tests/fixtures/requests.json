@@ -1,0 +1,196 @@
+[
+  {
+    "id": "plain_get",
+    "method": "GET",
+    "headers": {}
+  },
+  {
+    "id": "if_match_match",
+    "method": "GET",
+    "headers": {
+      "If-Match": "\"abc123\""
+    }
+  },
+  {
+    "id": "if_match_no_match",
+    "method": "GET",
+    "headers": {
+      "If-Match": "\"xyz\""
+    }
+  },
+  {
+    "id": "if_match_star",
+    "method": "GET",
+    "headers": {
+      "If-Match": "*"
+    }
+  },
+  {
+    "id": "if_unmodified_since_not_modified",
+    "method": "GET",
+    "headers": {
+      "If-Unmodified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    }
+  },
+  {
+    "id": "if_unmodified_since_modified",
+    "method": "GET",
+    "headers": {
+      "If-Unmodified-Since": "Wed, 21 Oct 2015 07:27:00 GMT"
+    }
+  },
+  {
+    "id": "if_none_match_match_get",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"abc123\""
+    }
+  },
+  {
+    "id": "if_none_match_no_match_get",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"xyz\""
+    }
+  },
+  {
+    "id": "if_none_match_match_put",
+    "method": "PUT",
+    "headers": {
+      "If-None-Match": "\"abc123\""
+    }
+  },
+  {
+    "id": "if_none_match_weak_match_get",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "W/\"abc123\""
+    }
+  },
+  {
+    "id": "if_modified_since_not_modified",
+    "method": "GET",
+    "headers": {
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    }
+  },
+  {
+    "id": "if_modified_since_modified",
+    "method": "GET",
+    "headers": {
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:27:00 GMT"
+    }
+  },
+  {
+    "id": "combo_inm_match_ims_modified",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"abc123\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:27:00 GMT"
+    }
+  },
+  {
+    "id": "combo_inm_no_match_ims_not_modified",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"xyz\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    }
+  },
+  {
+    "id": "combo_im_match_ius_modified",
+    "method": "GET",
+    "headers": {
+      "If-Match": "\"abc123\"",
+      "If-Unmodified-Since": "Wed, 21 Oct 2015 07:27:00 GMT"
+    }
+  },
+  {
+    "id": "inm_suppresses_ims",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"abc123\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    }
+  },
+  {
+    "id": "precondition_wins_over_range",
+    "method": "GET",
+    "headers": {
+      "If-Match": "\"xyz\"",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "range_satisfiable",
+    "method": "GET",
+    "headers": {
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "range_unsatisfiable",
+    "method": "GET",
+    "headers": {
+      "Range": "bytes=2000-3000"
+    }
+  },
+  {
+    "id": "if_range_match_range",
+    "method": "GET",
+    "headers": {
+      "If-Range": "\"abc123\"",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "if_range_no_match_range",
+    "method": "GET",
+    "headers": {
+      "If-Range": "\"xyz\"",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "if_range_weak_match_range",
+    "method": "GET",
+    "headers": {
+      "If-Range": "W/\"abc123\"",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "if_range_date_match_range",
+    "method": "GET",
+    "headers": {
+      "If-Range": "Wed, 21 Oct 2015 07:28:00 GMT",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "if_range_date_no_match_range",
+    "method": "GET",
+    "headers": {
+      "If-Range": "Wed, 21 Oct 2015 07:27:00 GMT",
+      "Range": "bytes=0-99"
+    }
+  },
+  {
+    "id": "video-chunk-if-range-mismatch",
+    "method": "GET",
+    "headers": {
+      "If-Range": "\"xyz\"",
+      "Range": "bytes=0-99"
+    },
+    "asset_class": "video-chunk"
+  },
+  {
+    "id": "manifest-inm-no-match-ims-not-modified",
+    "method": "GET",
+    "headers": {
+      "If-None-Match": "\"xyz\"",
+      "If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"
+    },
+    "asset_class": "manifest"
+  }
+]

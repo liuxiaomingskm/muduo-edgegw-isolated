@@ -1,0 +1,6 @@
+{
+  "version": "2024-09",
+  "description": "Local operating policy for conditional request routing – distinct from RFC 9110 which only classifies, profile decides final action per asset class. See skill for mapping table.",
+  "asset_classes": ["static", "video-chunk", "manifest", "immutable"],
+  "default_asset_class": "static"
+}
