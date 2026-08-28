@@ -4,19 +4,11 @@
 #include "muduo/net/http/HttpRequest.h"
 #include <string>
 #include <map>
+#include <vector>
 
 namespace muduo {
 namespace net {
 namespace http {
-
-struct Resource {
-  std::string etag;
-  std::string lastModified;
-  long contentLength = 1024;
-  bool exists = true;
-  std::string assetClass = "static";
-  std::string profileVersion = "2024-09";
-};
 
 enum class ConditionalOutcome {
   kNotFound,
@@ -33,6 +25,28 @@ enum class ConditionalRoute {
   kProtocolDefault,
   kAssetIntegrity,
   kRepresentationReuse,
+};
+
+struct ConditionalPolicyRecord {
+  std::string id;
+  std::string assetClass = "*";
+  std::string method = "*";
+  ConditionalOutcome outcome = ConditionalOutcome::kFullRepresentation;
+  std::string effectiveProfile;
+  std::string retiredProfile;
+  int status = 200;
+  ConditionalRoute route = ConditionalRoute::kProtocolDefault;
+};
+
+struct Resource {
+  std::string etag;
+  std::string lastModified;
+  long contentLength = 1024;
+  bool exists = true;
+  std::string assetClass = "static";
+  std::string profileVersion = "2024-09";
+  std::vector<std::string> availableProfileVersions;
+  std::vector<ConditionalPolicyRecord> conditionalPolicies;
 };
 
 struct ConditionalDecision {

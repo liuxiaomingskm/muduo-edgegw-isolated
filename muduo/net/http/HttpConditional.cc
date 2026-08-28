@@ -155,8 +155,51 @@ std::string conditionalProfileIdentity(const Resource& resource) {
   return resource.profileVersion + ":" + resource.assetClass;
 }
 
-ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
-                                                const Resource& resource) {
+namespace {
+
+bool containsProfile(const std::vector<std::string>& profiles,
+                     const std::string& profile) {
+  return std::find(profiles.begin(), profiles.end(), profile) != profiles.end();
+}
+
+bool selectorMatches(const std::string& selector, const std::string& value) {
+  return selector == "*" || selector == value;
+}
+
+bool recordIsActive(const ConditionalPolicyRecord& record,
+                    const std::string& profile) {
+  // Deployment profiles are ordered snapshots. A bounded record applies only
+  // while the selected profile lies inside its rollout window.
+  return !record.effectiveProfile.empty() &&
+         profile > record.effectiveProfile &&
+         !record.retiredProfile.empty() &&
+         profile < record.retiredProfile;
+}
+
+const ConditionalPolicyRecord* selectPolicyRecord(
+    const HttpRequest& request,
+    const Resource& resource,
+    ConditionalOutcome outcome) {
+  if (!containsProfile(resource.availableProfileVersions,
+                       resource.profileVersion)) {
+    return nullptr;
+  }
+
+  const std::string method = request.methodString();
+  for (const auto& record : resource.conditionalPolicies) {
+    if (record.outcome != outcome ||
+        !selectorMatches(record.assetClass, resource.assetClass) ||
+        !selectorMatches(record.method, method) ||
+        !recordIsActive(record, resource.profileVersion)) {
+      continue;
+    }
+    return &record;
+  }
+  return nullptr;
+}
+
+ConditionalDecision classifyConditionalRequest(const HttpRequest& request,
+                                               const Resource& resource) {
   if (!resource.exists) {
     return {404, ConditionalOutcome::kNotFound,
             ConditionalRoute::kProtocolDefault};
@@ -246,6 +289,20 @@ ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
 
   return {200, ConditionalOutcome::kFullRepresentation,
           ConditionalRoute::kProtocolDefault};
+}
+
+} // namespace
+
+ConditionalDecision evaluateConditionalDecision(const HttpRequest& request,
+                                                const Resource& resource) {
+  ConditionalDecision decision = classifyConditionalRequest(request, resource);
+  const ConditionalPolicyRecord* record =
+      selectPolicyRecord(request, resource, decision.outcome);
+  if (record != nullptr) {
+    decision.status = record->status;
+    decision.route = record->route;
+  }
+  return decision;
 }
 
 int evaluateConditionalRequest(const HttpRequest& request, const Resource& resource) {

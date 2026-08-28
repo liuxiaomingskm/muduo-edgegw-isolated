@@ -4,5 +4,27 @@
   "description": "Runtime identity for conditional-response handling. The profile is selected per asset; operational interpretation is documented separately.",
   "asset_classes": ["static", "video-chunk", "manifest", "immutable"],
   "default_asset_class": "static",
-  "route_families": ["protocol-default", "asset-integrity", "representation-reuse"]
+  "route_families": ["protocol-default", "asset-integrity", "representation-reuse"],
+  "records": [
+    {
+      "id": "chunk-integrity-rollout",
+      "asset_class": "video-chunk",
+      "method": "GET",
+      "outcome": "range-ignored",
+      "effective_profile": "2024-09",
+      "retired_profile": "",
+      "status": 412,
+      "route": "asset-integrity"
+    },
+    {
+      "id": "manifest-reuse-window",
+      "asset_class": "manifest",
+      "method": "GET",
+      "outcome": "not-modified-suppressed",
+      "effective_profile": "2024-09",
+      "retired_profile": "2025-01",
+      "status": 304,
+      "route": "representation-reuse"
+    }
+  ]
 }

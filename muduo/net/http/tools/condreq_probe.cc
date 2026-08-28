@@ -43,6 +43,148 @@ static std::string jsonEscape(const std::string& s) {
   return out;
 }
 
+static std::string jsonStringField(const std::string& object,
+                                   const std::string& key,
+                                   const std::string& fallback = "") {
+  const std::string pattern = "\"" + key + "\"";
+  const size_t keyPos = object.find(pattern);
+  if (keyPos == std::string::npos) return fallback;
+  const size_t colon = object.find(':', keyPos + pattern.size());
+  if (colon == std::string::npos) return fallback;
+  const size_t first = findUnescapedQuote(object, colon + 1);
+  if (first == std::string::npos) return fallback;
+  const size_t second = findUnescapedQuote(object, first + 1);
+  if (second == std::string::npos) return fallback;
+  return object.substr(first + 1, second - first - 1);
+}
+
+static int jsonIntField(const std::string& object,
+                        const std::string& key,
+                        int fallback) {
+  const std::string pattern = "\"" + key + "\"";
+  const size_t keyPos = object.find(pattern);
+  if (keyPos == std::string::npos) return fallback;
+  const size_t colon = object.find(':', keyPos + pattern.size());
+  if (colon == std::string::npos) return fallback;
+  size_t start = colon + 1;
+  while (start < object.size() && std::isspace(static_cast<unsigned char>(object[start]))) {
+    ++start;
+  }
+  size_t end = start;
+  while (end < object.size() && std::isdigit(static_cast<unsigned char>(object[end]))) {
+    ++end;
+  }
+  if (end == start) return fallback;
+  try {
+    return std::stoi(object.substr(start, end - start));
+  } catch (...) {
+    return fallback;
+  }
+}
+
+static std::vector<std::string> jsonStringArray(const std::string& document,
+                                                 const std::string& key) {
+  std::vector<std::string> values;
+  const std::string pattern = "\"" + key + "\"";
+  const size_t keyPos = document.find(pattern);
+  if (keyPos == std::string::npos) return values;
+  const size_t open = document.find('[', keyPos + pattern.size());
+  const size_t close = document.find(']', open);
+  if (open == std::string::npos || close == std::string::npos) return values;
+  size_t pos = open + 1;
+  while (pos < close) {
+    const size_t first = findUnescapedQuote(document, pos);
+    if (first == std::string::npos || first >= close) break;
+    const size_t second = findUnescapedQuote(document, first + 1);
+    if (second == std::string::npos || second > close) break;
+    values.push_back(document.substr(first + 1, second - first - 1));
+    pos = second + 1;
+  }
+  return values;
+}
+
+static std::vector<std::string> jsonObjectArray(const std::string& document,
+                                                 const std::string& key) {
+  std::vector<std::string> objects;
+  const std::string pattern = "\"" + key + "\"";
+  const size_t keyPos = document.find(pattern);
+  if (keyPos == std::string::npos) return objects;
+  const size_t open = document.find('[', keyPos + pattern.size());
+  if (open == std::string::npos) return objects;
+
+  bool inString = false;
+  bool escaped = false;
+  int depth = 0;
+  size_t objectStart = std::string::npos;
+  for (size_t i = open + 1; i < document.size(); ++i) {
+    const char c = document[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c == '\\') escaped = true;
+      else if (c == '"') inString = false;
+      continue;
+    }
+    if (c == '"') {
+      inString = true;
+    } else if (c == '{') {
+      if (depth == 0) objectStart = i;
+      ++depth;
+    } else if (c == '}') {
+      --depth;
+      if (depth == 0 && objectStart != std::string::npos) {
+        objects.push_back(document.substr(objectStart, i - objectStart + 1));
+        objectStart = std::string::npos;
+      }
+    } else if (c == ']' && depth == 0) {
+      break;
+    }
+  }
+  return objects;
+}
+
+static muduo::net::http::ConditionalOutcome parseOutcome(const std::string& value) {
+  using muduo::net::http::ConditionalOutcome;
+  if (value == "not-found") return ConditionalOutcome::kNotFound;
+  if (value == "precondition-failed") return ConditionalOutcome::kPreconditionFailed;
+  if (value == "not-modified") return ConditionalOutcome::kNotModified;
+  if (value == "not-modified-suppressed") {
+    return ConditionalOutcome::kNotModifiedSuppressed;
+  }
+  if (value == "partial-content") return ConditionalOutcome::kPartialContent;
+  if (value == "range-not-satisfiable") {
+    return ConditionalOutcome::kRangeNotSatisfiable;
+  }
+  if (value == "range-ignored") return ConditionalOutcome::kRangeIgnored;
+  return ConditionalOutcome::kFullRepresentation;
+}
+
+static muduo::net::http::ConditionalRoute parseRoute(const std::string& value) {
+  using muduo::net::http::ConditionalRoute;
+  if (value == "asset-integrity") return ConditionalRoute::kAssetIntegrity;
+  if (value == "representation-reuse") {
+    return ConditionalRoute::kRepresentationReuse;
+  }
+  return ConditionalRoute::kProtocolDefault;
+}
+
+static std::vector<muduo::net::http::ConditionalPolicyRecord> parsePolicyRecords(
+    const std::string& document) {
+  std::vector<muduo::net::http::ConditionalPolicyRecord> records;
+  for (const std::string& object : jsonObjectArray(document, "records")) {
+    muduo::net::http::ConditionalPolicyRecord record;
+    record.id = jsonStringField(object, "id");
+    record.assetClass = jsonStringField(object, "asset_class", "*");
+    record.method = jsonStringField(object, "method", "*");
+    record.outcome = parseOutcome(jsonStringField(object, "outcome"));
+    record.effectiveProfile = jsonStringField(object, "effective_profile");
+    record.retiredProfile = jsonStringField(object, "retired_profile");
+    record.status = jsonIntField(object, "status", 200);
+    record.route = parseRoute(jsonStringField(object, "route"));
+    records.push_back(record);
+  }
+  return records;
+}
+
 int main(int argc, char* argv[]) {
   std::string reqId;
   bool jsonOutput=false;
@@ -67,6 +209,8 @@ int main(int argc, char* argv[]) {
   };
   std::string profileContent=readFile(profilePaths);
   std::string profileVersion="unknown";
+  std::vector<std::string> availableProfiles;
+  std::vector<muduo::net::http::ConditionalPolicyRecord> policyRecords;
   if (!profileContent.empty()) {
     auto vPos=profileContent.find("\"default_version\"");
     if (vPos!=std::string::npos) {
@@ -75,6 +219,8 @@ int main(int argc, char* argv[]) {
       auto q2=findUnescapedQuote(profileContent, q1+1);
       if (q1!=std::string::npos && q2!=std::string::npos) profileVersion=profileContent.substr(q1+1, q2-q1-1);
     }
+    availableProfiles=jsonStringArray(profileContent, "available_versions");
+    policyRecords=parsePolicyRecords(profileContent);
   }
 
   std::string etag="\"abc123\"";
@@ -164,6 +310,8 @@ int main(int argc, char* argv[]) {
   resource.contentLength = contentLength;
   resource.assetClass = assetClass;
   resource.profileVersion = profileVersion;
+  resource.availableProfileVersions = availableProfiles;
+  resource.conditionalPolicies = policyRecords;
   muduo::net::http::ConditionalDecision observed =
       muduo::net::http::evaluateConditionalDecision(request, resource);
 
@@ -188,6 +336,25 @@ int main(int argc, char* argv[]) {
     std::cout<<"    \"content_length\": "<<contentLength<<",\n";
     std::cout<<"    \"asset_class\": \""<<jsonEscape(assetClass)<<"\"\n";
     std::cout<<"  },\n";
+    std::cout<<"  \"policy_records\": [\n";
+    for (size_t recordIndex=0; recordIndex<policyRecords.size(); ++recordIndex) {
+      const auto& record=policyRecords[recordIndex];
+      std::cout<<"    {\"id\": \""<<jsonEscape(record.id)
+               <<"\", \"asset_class\": \""<<jsonEscape(record.assetClass)
+               <<"\", \"method\": \""<<jsonEscape(record.method)
+               <<"\", \"outcome\": \""
+               <<muduo::net::http::conditionalOutcomeName(record.outcome)
+               <<"\", \"effective_profile\": \""
+               <<jsonEscape(record.effectiveProfile)
+               <<"\", \"retired_profile\": \""
+               <<jsonEscape(record.retiredProfile)
+               <<"\", \"status\": "<<record.status
+               <<", \"route\": \""
+               <<muduo::net::http::conditionalRouteName(record.route)<<"\"}";
+      if (recordIndex+1<policyRecords.size()) std::cout<<",";
+      std::cout<<"\n";
+    }
+    std::cout<<"  ],\n";
     std::cout<<"  \"observed_decision\": {\n";
     std::cout<<"    \"status\": "<<observed.status<<",\n";
     std::cout<<"    \"rfc_outcome\": \""
