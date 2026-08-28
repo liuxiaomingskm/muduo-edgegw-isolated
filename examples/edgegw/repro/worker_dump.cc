@@ -85,12 +85,11 @@ int main(int argc, char* argv[]) {
   Ledger ledger;
   PlacementPolicy placement;
 
-  // Monitoring uses uniform stalled classification
   int stalled = pool.countStalled();
   printf("# stalled_for_recovery=%d (hasBufferedAndTimer count)\n", stalled);
 
   if (fleet) {
-    // Same sequence as rebalance_repro to produce same registry state
+    // Same sequence as rebalance_repro to produce the same registry state.
     PlacementPolicy::Move m;
     std::vector<PlacementPolicy::Move> movesA1;
     for (int i = 0; i < 7; ++i) {

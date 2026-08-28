@@ -1,4 +1,5 @@
 #include "worker_pool.h"
+#include "muduo/base/CountDownLatch.h"
 
 namespace edgegw {
 
@@ -85,8 +86,29 @@ bool WorkerPool::checkExactlyOneOwner(int connId) const {
 }
 
 int WorkerPool::quiesceHeldConnections() {
-  // See header for contract – actual draining is in the fixed version.
-  return 0;
+  int drained = 0;
+  for (const auto& worker : workers_) {
+    Worker* current = worker.get();
+    for (int connId : current->getConnections()) {
+      if (!current->hasActiveTxn(connId) || current->isDraining(connId)) {
+        continue;
+      }
+
+      muduo::CountDownLatch done(1);
+      current->loop()->queueInLoop([current, connId, &done]() {
+        current->setBufferedBytes(connId, 0);
+        current->clearActiveTxn(connId);
+        current->clearTimer(connId);
+        current->setDraining(connId, true);
+        current->removeConnection(connId);
+        done.countDown();
+      });
+      done.wait();
+      ++drained;
+      ++drainCount_;
+    }
+  }
+  return drained;
 }
 
 } // namespace edgegw

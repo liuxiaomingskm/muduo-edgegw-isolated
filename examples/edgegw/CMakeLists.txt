@@ -4,6 +4,7 @@ add_library(edgegw_lib
   placement.cc
   migrator.cc
   connection_state.cc
+  recovery_policy.cc
   ledger.cc
 )
 target_link_libraries(edgegw_lib muduo_net)

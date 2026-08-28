@@ -1,4 +1,5 @@
 #include "connection_state.h"
+#include "muduo/base/CountDownLatch.h"
 
 namespace edgegw {
 
@@ -9,16 +10,24 @@ bool ConnectionState::transfer(int connId, Worker* src, Worker* dst) {
 }
 
 bool ConnectionState::transferWithBufferedCheck(int connId, Worker* src, Worker* dst, int bufferedBytes) {
-  if (bufferedBytes > 0) {
-    dst->setBufferedBytes(connId, 0);
+  if (src->hasActiveTxn(connId)) {
     return false;
-  } else {
-    dst->unsafeSetReading(connId, true);
-    dst->setTimer(connId, true);
-    src->clearTimer(connId);
-    dst->setBufferedBytes(connId, 0);
-    return true;
   }
+
+  dst->setBufferedBytes(connId, bufferedBytes);
+  src->setBufferedBytes(connId, 0);
+
+  muduo::CountDownLatch done(1);
+  src->loop()->queueInLoop([src, dst, connId, &done]() {
+    src->clearTimer(connId);
+    dst->loop()->queueInLoop([dst, connId, &done]() {
+      dst->enableReading(connId);
+      dst->setTimer(connId, true);
+      done.countDown();
+    });
+  });
+  done.wait();
+  return true;
 }
 
 } // namespace edgegw

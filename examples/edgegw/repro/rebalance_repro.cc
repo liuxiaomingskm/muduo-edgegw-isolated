@@ -55,8 +55,7 @@ int main(int argc, char* argv[]) {
     });
     latch.wait();
     if (fleet) {
-      // Fleet setup with overlapping attributes to avoid single-column identification
-      // Connections have mixed buffered/timer/txnGen/writeAge to require combination
+      // Fleet setup uses a mix of connection state and timing observations.
       if (i == 70 || i == 71) {
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
@@ -74,13 +73,11 @@ int main(int argc, char* argv[]) {
         worker->setTxnGen(i, 1);
         worker->setLastWriteAgeMs(i, 120);
       } else if ((i >= 0 && i < 7) || (i >= 10 && i < 17)) {
-        // A shape: will be parked, reading disabled, timer 0, buffered 1024
         worker->setBufferedBytes(i, 1024);
         worker->setTimer(i, false);
         worker->setTxnGen(i, 0);
         worker->setLastWriteAgeMs(i, 800);
       } else if (i == 51 || i == 60) {
-        // C shape initial, will become timer0 after failed transfer
         worker->setBufferedBytes(i, 2048);
         worker->setTimer(i, true);
         worker->setTxnGen(i, 0);
@@ -115,7 +112,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> attempted;
 
   if (fleet) {
-    printf("# Test A: placement bookkeeping\n");
+    printf("# Placement observation\n");
     PlacementPolicy::Move m;
     std::vector<PlacementPolicy::Move> movesA1;
     for (int i = 0; i < 7; ++i) {
@@ -148,7 +145,7 @@ int main(int argc, char* argv[]) {
     placement.scheduleMoves(movesA2);
     auto pendingA2 = placement.getPendingMoves();
     size_t pendingAfterSecondSchedule = pendingA2.size();
-    printf("pending_after_schedule=%zu (expected 11 if scheduleMoves merges, 7 if clears)\n", pendingAfterSecondSchedule);
+    printf("pending_after_schedule=%zu\n", pendingAfterSecondSchedule);
     ledger.getOrCreate(1000)->migrate_requested = static_cast<int>(pendingAfterSecondSchedule);
     for (size_t i = static_cast<size_t>(half); i < pendingA1.size(); ++i) {
       int lost = pendingA1[i].connId;
@@ -165,7 +162,7 @@ int main(int argc, char* argv[]) {
     }
     placement.markDispatched(static_cast<int>(pendingA2.size()));
 
-    printf("# Test B: ownership transfer\n");
+    printf("# Ownership observation\n");
     int bConn = 50;
     int ownerB = pool.ownerOf(bConn);
     Worker* srcB = pool.getWorker(ownerB >= 0 ? ownerB : 0);
@@ -193,7 +190,7 @@ int main(int argc, char* argv[]) {
       attempted.push_back(bConn);
     }
 
-    printf("# Test C: state transfer (C + second disagreement)\n");
+    printf("# State-transfer observation\n");
     for (int cConn : {51, 60}) {
       int ownerC = pool.ownerOf(cConn);
       Worker* srcC = pool.getWorker(ownerC >= 0 ? ownerC : 0);
@@ -208,14 +205,13 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    printf("# Test D: held mid-transaction (should not migrate)\n");
+    printf("# Transaction observation\n");
     for (int dConn : {70, 71}) {
       int ownerD = pool.ownerOf(dConn);
       Worker* srcD = pool.getWorker(ownerD >= 0 ? ownerD : 0);
       Worker* dstD = pool.getWorker((ownerD + 1) % numWorkers);
       if (srcD && dstD && srcD->id() != dstD->id()) {
         srcD->setActiveTxn(dConn, true);
-        // 70: 2048, 71: 1024 masquerade
         int buf = (dConn == 70) ? 2048 : 1024;
         srcD->setBufferedBytes(dConn, buf);
         srcD->setTimer(dConn, true);
@@ -224,7 +220,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    printf("# Test E: healthy slow - looks like D but activeTxn=0 (suggestion 4)\n");
+    printf("# Delayed-migration observation\n");
     {
       int eConn = 72;
       int ownerE = pool.ownerOf(eConn);
@@ -239,8 +235,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    // P0-1 parity: bare migrate must leave reading enabled (oracle path)
-    printf("# Test Bare: single migrate must leave reading enabled (P0-1 parity)\n");
+    printf("# Direct-migration observation\n");
     {
       int bareConn = 42;
       Worker* srcBare = pool.getWorker(0);
@@ -349,7 +344,6 @@ int main(int argc, char* argv[]) {
 
   for (int cid : attempted) updateRecord(cid);
 
-  // Disagreement: two directions (suggestion 2)
   if (fleet) {
     int actualLoops50 = pool.loopsRegistered(50);
     if (actualLoops50 == 2) {
@@ -366,7 +360,6 @@ int main(int argc, char* argv[]) {
     if (actualLoops51 == 1 && !reading51) {
       for (auto& rec : records) {
         if (rec.conn == 51) {
-          // ledger says B (2 owners) but worker says C (1 owner reading0)
           rec.loops_registered = 2;
           rec.events_after_migrate = 1;
           break;
@@ -395,21 +388,20 @@ int main(int argc, char* argv[]) {
   }
   int pendingAfterSecond = ledger.getOrCreate(1000)->migrate_requested.load();
   if (pendingAfterSecond != 11) {
-    printf("RESULT: pending backlog unexpected %d (expected 11) – scheduleMoves must merge, not replace/clear\n", pendingAfterSecond);
+    printf("RESULT: pending backlog mismatch %d\n", pendingAfterSecond);
     stalled++;
   }
-  // P0-3 D forced via migrator must be red – held with activeTxn=1 should have comp==0
   for (int dConn : {70, 71, 133}) {
     auto* e = ledger.getOrCreate(dConn);
     int owner = pool.ownerOf(dConn);
     Worker* w = (owner>=0)? pool.getWorker(owner):nullptr;
     if (w && w->hasActiveTxn(dConn) && e->migrate_completed.load() > 0) {
-      printf("RESULT: D forced via migrator conn=%d owner=%d comp=%d still activeTxn=1 should have stayed comp=0\n", dConn, owner, e->migrate_completed.load());
+      printf("RESULT: transaction recovery mismatch conn=%d owner=%d comp=%d\n", dConn, owner, e->migrate_completed.load());
       stalled++;
     }
   }
   if (pool.loopsRegistered(72) == 0) {
-    printf("RESULT: E quiesced conn=72 activeTxn=0 should have been migrated not quiesced\n");
+    printf("RESULT: delayed migration mismatch conn=72\n");
     stalled++;
   }
   if (stalled == 0) printf("RESULT: all %zu migrated connections healthy\n", attempted.size());

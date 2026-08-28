@@ -1,0 +1,46 @@
+{
+  "default_version": "2025-03",
+  "available_versions": ["2025-03", "2025-07"],
+  "records": [
+    {
+      "id": "pending-recovery",
+      "condition": "pending-undispatched",
+      "evidence_source": "placement",
+      "effective_profile": "2025-03",
+      "retired_profile": "",
+      "action": "requeue-pending"
+    },
+    {
+      "id": "ownership-recovery",
+      "condition": "ownership-conflict",
+      "evidence_source": "worker",
+      "effective_profile": "2025-03",
+      "retired_profile": "",
+      "action": "reconcile-ownership"
+    },
+    {
+      "id": "state-recovery",
+      "condition": "state-incomplete",
+      "evidence_source": "worker",
+      "effective_profile": "2025-03",
+      "retired_profile": "2025-07",
+      "action": "restore-state"
+    },
+    {
+      "id": "transaction-recovery",
+      "condition": "transaction-held",
+      "evidence_source": "worker",
+      "effective_profile": "2025-03",
+      "retired_profile": "",
+      "action": "quiesce"
+    },
+    {
+      "id": "migration-recovery",
+      "condition": "migration-ready",
+      "evidence_source": "worker",
+      "effective_profile": "2025-03",
+      "retired_profile": "",
+      "action": "migrate"
+    }
+  ]
+}

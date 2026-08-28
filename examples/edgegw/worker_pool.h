@@ -46,32 +46,13 @@ class WorkerPool {
    */
   int drainCount() const { return drainCount_; }
 
-  /**
-   * Recovery classification lattice (used by edge monitoring):
-   *   idle:        no buffered, no timer
-   *   active:      buffered==0 timer==0 reading==1
-   *   stalled:     buffered>0 && timer (hasBufferedAndTimer)
-   *                A stalled connection stopped mid-operation and requires
-   *                recovery handling via the pool. All stalled connections
-   *                are handled uniformly by the recovery path (re-arm or
-   *                quiesce). txnGen/writeAge are diagnostic counters for
-   *                age/generation, not part of the stalled definition.
-   * Returns true if connection has buffered data and an active timer
-   * after a rebalance. Such connections are generally considered stalled
-   * and require recovery handling.
-   */
+  // Reports the primitive buffered-and-timer monitoring signal.
   bool hasBufferedAndTimer(int connId) const;
 
-  /**
-   * Returns true if connection is considered stalled (hasBufferedAndTimer)
-   * and should be recovered uniformly.
-   */
+  // Compatibility alias used by existing monitoring.
   bool isStalledForRecovery(int connId) const;
 
-  /**
-   * Counts connections that are stalled for recovery.
-   * Used by monitoring to report how many connections need uniform recovery.
-   */
+  // Counts connections for which hasBufferedAndTimer() is true.
   int countStalled() const;
 
  private:

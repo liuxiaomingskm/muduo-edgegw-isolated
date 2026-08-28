@@ -49,8 +49,18 @@ std::vector<PlacementPolicy::Move> PlacementPolicy::computeMoves(WorkerPool& poo
 
 void PlacementPolicy::scheduleMoves(const std::vector<Move>& moves) {
   std::lock_guard<std::mutex> lock(mutex_);
-  pendingMoves_.clear();
-  pendingMoves_ = moves;
+  for (const auto& move : moves) {
+    bool found = false;
+    for (auto& pending : pendingMoves_) {
+      if (pending.connId == move.connId) {
+        pending.src = move.src;
+        pending.dst = move.dst;
+        found = true;
+        break;
+      }
+    }
+    if (!found) pendingMoves_.push_back(move);
+  }
 }
 
 std::vector<PlacementPolicy::Move> PlacementPolicy::getPendingMoves() {
