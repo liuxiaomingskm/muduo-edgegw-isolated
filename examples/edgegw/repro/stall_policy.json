@@ -1,0 +1,38 @@
+{
+  "default_edition": "2025-07",
+  "available_editions": ["2025-03", "2025-07", "2025-11"],
+  "records": [
+    {
+      "id": "worker-fallback",
+      "stall_class": "*",
+      "evidence_source": "worker",
+      "effective_edition": "2025-03",
+      "retired_edition": "2025-11",
+      "action": "drain-connection"
+    },
+    {
+      "id": "accounting-recovery",
+      "stall_class": "request-missing",
+      "evidence_source": "worker",
+      "effective_edition": "2025-07",
+      "retired_edition": "",
+      "action": "reconcile-accounting"
+    },
+    {
+      "id": "dispatch-recovery",
+      "stall_class": "dispatch-missing",
+      "evidence_source": "worker",
+      "effective_edition": "2025-07",
+      "retired_edition": "",
+      "action": "dispatch-on-owner"
+    },
+    {
+      "id": "readiness-recovery",
+      "stall_class": "readiness-missing",
+      "evidence_source": "worker",
+      "effective_edition": "2025-07",
+      "retired_edition": "",
+      "action": "quarantine-slot"
+    }
+  ]
+}

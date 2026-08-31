@@ -1,0 +1,5 @@
+add_executable(stall_repro stall_repro.cc)
+target_link_libraries(stall_repro edgegw_lib muduo_net)
+
+add_executable(stall_policy_probe stall_policy_probe.cc)
+target_link_libraries(stall_policy_probe edgegw_lib muduo_net)

@@ -1,0 +1,165 @@
+#include "examples/edgegw/table/ConnSlotTable.h"
+#include <unistd.h>
+#include <cassert>
+#include <poll.h>
+
+namespace edgegw {
+
+int ConnSlotTable::acquire(int fd, short events) {
+  int idx;
+  if (!free_.empty()) {
+    idx = free_.back();
+    free_.pop_back();
+    slots_[idx].fd = fd;
+    slots_[idx].events = events;
+    slots_[idx].revents = 0;
+  } else {
+    idx = static_cast<int>(slots_.size());
+    slots_.push_back(Slot(fd, events));
+  }
+  owner_[fd] = idx;
+  return idx;
+}
+
+void ConnSlotTable::recycle(int idx) {
+  assert(idx >= 0 && idx < static_cast<int>(slots_.size()));
+  for (auto it = owner_.begin(); it != owner_.end(); ) {
+    if (it->second == idx) it = owner_.erase(it);
+    else ++it;
+  }
+  slots_[idx].fd = -1;
+  slots_[idx].events = 0;
+  slots_[idx].revents = 0;
+  free_.push_back(idx);
+}
+
+void ConnSlotTable::park(int fd) {
+  auto it = owner_.find(fd);
+  if (it == owner_.end()) return;
+  if (parked_.find(fd) != parked_.end()) return;
+  int idx = it->second;
+  if (idx < 0 || idx >= static_cast<int>(slots_.size())) return;
+  parked_[fd] = slots_[idx].events;
+  parkedIdx_[fd] = idx;
+  slots_[idx].fd = -1;
+  slots_[idx].events = 0;
+  slots_[idx].revents = 0;
+  owner_.erase(it);
+}
+
+void ConnSlotTable::resume(int fd) {
+  auto pit = parked_.find(fd);
+  if (pit == parked_.end()) return;
+  short saved = pit->second;
+  auto idxIt = parkedIdx_.find(fd);
+  int idx = -1;
+  if (idxIt != parkedIdx_.end()) idx = idxIt->second;
+  parked_.erase(pit);
+  parkedIdx_.erase(fd);
+  if (idx >= 0 && idx < static_cast<int>(slots_.size())) {
+    slots_[idx].fd = fd;
+    slots_[idx].events = saved;
+    slots_[idx].revents = 0;
+    owner_[fd] = idx;
+  } else {
+    acquire(fd, saved);
+  }
+}
+
+void ConnSlotTable::release(int fd) {
+  auto pit = parked_.find(fd);
+  if (pit != parked_.end()) {
+    auto idxIt = parkedIdx_.find(fd);
+    int idx = -1;
+    if (idxIt != parkedIdx_.end()) idx = idxIt->second;
+    parked_.erase(pit);
+    parkedIdx_.erase(fd);
+    if (idx >= 0 && idx < static_cast<int>(slots_.size())) {
+      slots_[idx].fd = -1;
+      slots_[idx].events = 0;
+      slots_[idx].revents = 0;
+      free_.push_back(idx);
+    }
+    return;
+  }
+  auto it = owner_.find(fd);
+  if (it != owner_.end()) {
+    int idx = it->second;
+    if (idx >= 0 && idx < static_cast<int>(slots_.size())) {
+      slots_[idx].fd = -1;
+      slots_[idx].events = 0;
+      slots_[idx].revents = 0;
+      free_.push_back(idx);
+    }
+    owner_.erase(it);
+  }
+}
+
+int ConnSlotTable::indexOf(int fd) const {
+  auto it = owner_.find(fd);
+  if (it == owner_.end()) return -1;
+  return it->second;
+}
+
+void ConnSlotTable::rearm(int idx, int fd, short events) {
+  if (idx < 0 || idx >= static_cast<int>(slots_.size())) return;
+  slots_[idx].fd = fd;
+  slots_[idx].events = events;
+  slots_[idx].revents = 0;
+  owner_[fd] = idx;
+}
+
+void ConnSlotTable::removeAndCompact(int fd) {
+  auto it = owner_.find(fd);
+  if (it == owner_.end()) return;
+  int idx = it->second;
+  if (idx < 0 || idx >= static_cast<int>(slots_.size())) return;
+  for (size_t i = idx; i + 1 < slots_.size(); ++i) {
+    slots_[i] = slots_[i+1];
+  }
+  slots_.pop_back();
+  owner_.erase(it);
+  for (auto& kv : owner_) {
+    if (kv.second > idx) kv.second -= 1;
+  }
+  std::vector<int> newFree;
+  for (int f : free_) {
+    if (f < static_cast<int>(slots_.size())) {
+      if (f > idx) newFree.push_back(f-1);
+      else if (f < idx) newFree.push_back(f);
+    }
+  }
+  free_ = std::move(newFree);
+  for (auto& kv : parkedIdx_) {
+    if (kv.second > idx) kv.second -= 1;
+  }
+}
+
+int ConnSlotTable::pollOnce(int timeoutMs, std::vector<int>* active) {
+  std::vector<struct pollfd> pfds;
+  std::vector<int> fdMap;
+  pfds.reserve(slots_.size());
+  fdMap.reserve(slots_.size());
+  for (size_t i = 0; i < slots_.size(); ++i) {
+    const auto& s = slots_[i];
+    if (s.fd >= 0 && s.events != 0) {
+      struct pollfd pfd;
+      pfd.fd = s.fd;
+      pfd.events = s.events;
+      pfd.revents = 0;
+      pfds.push_back(pfd);
+      fdMap.push_back(s.fd);
+    }
+  }
+  int n = ::poll(pfds.data(), pfds.size(), timeoutMs);
+  if (n > 0 && active) {
+    for (size_t i = 0; i < pfds.size(); ++i) {
+      if (pfds[i].revents & (POLLIN | POLLERR | POLLHUP)) {
+        active->push_back(fdMap[i]);
+      }
+    }
+  }
+  return n;
+}
+
+} // namespace edgegw
